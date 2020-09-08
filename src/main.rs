@@ -58,8 +58,6 @@ async fn main() {
         prev_price_map.insert(format!("card_{}", product_code), res.card_price);
         prev_price_map.insert(format!("cash_{}", product_code), res.cash_price);
     }
-    
-    println!("{:?}", prev_price_map);
 
     file = OpenOptions::new()
                 .write(true)
