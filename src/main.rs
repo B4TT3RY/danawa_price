@@ -1,21 +1,14 @@
-#[macro_use]
-extern crate unhtml_derive;
-extern crate unhtml;
-extern crate serde;
-extern crate reqwest;
-extern crate config;
-extern crate toml;
-
-use price::PriceData;
-use num_format::{Locale, ToFormattedString};
 use chrono::prelude::*;
+use num_format::{Locale, ToFormattedString};
 
-mod settings;
-mod telegram;
 mod danawa;
 mod price;
+mod settings;
+mod telegram;
+
+use price::PriceData;
 use settings::Settings;
-use telegram::syntax;
+use telegram::escape;
 
 #[tokio::main]
 async fn main() {
@@ -38,20 +31,22 @@ async fn main() {
         let PriceData {
             card_price: prev_card_price,
             cash_price: prev_cash_price,
-         } = price_map.get(&product_code);
+        } = price_map.get(&product_code);
 
         if prev_card_price != card_price || prev_cash_price != cash_price {
             let card_diff = price_difference(prev_card_price, card_price);
             let cash_diff = price_difference(prev_cash_price, cash_price);
 
-            let card_price = card_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
-            let cash_price = cash_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
+            let card_price =
+                card_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
+            let cash_price =
+                cash_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
 
             let new_content = format!(
                 "[{product_name}]({product_url})%0D%0A\
                 `\\- 카드가: {card_price}원 ({card_diff})`%0D%0A\
                 `\\- 현금가: {cash_price}원 ({cash_diff})`%0D%0A",
-                product_name = syntax(&res.product_name),
+                product_name = escape(&res.product_name),
                 product_url = res.url,
                 card_price = card_price,
                 card_diff = card_diff,
@@ -61,10 +56,13 @@ async fn main() {
             message.push_str(&new_content);
         }
 
-        price_map.insert(product_code, PriceData {
-            card_price,
-            cash_price
-        });
+        price_map.insert(
+            product_code,
+            PriceData {
+                card_price,
+                cash_price,
+            },
+        );
     }
 
     if !message.is_empty() {
@@ -74,7 +72,12 @@ async fn main() {
     price_map.save("Data.toml");
 
     if settings.telegram.update_chat_description {
-        tg_client.set_chat_description(&format!("마지막 확인: {}", local.format("%Y년 %m월 %d일 %H시 %M분"))).await;
+        tg_client
+            .set_chat_description(&format!(
+                "마지막 확인: {}",
+                local.format("%Y년 %m월 %d일 %H시 %M분")
+            ))
+            .await;
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Copy, Clone)]
 pub struct PriceData {
@@ -10,16 +10,14 @@ pub struct PriceData {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct PriceStorage {
-    price_map: HashMap<String, PriceData>
+    price_map: HashMap<String, PriceData>,
 }
 
 impl PriceStorage {
     pub fn load(path: impl AsRef<Path>) -> Option<Self> {
         let data = std::fs::read(path).ok()?;
         let storage = toml::from_slice(&data).ok()?;
-        Some(Self {
-            price_map: storage
-        })
+        Some(Self { price_map: storage })
     }
 
     pub fn save(&self, path: impl AsRef<Path>) {
@@ -28,7 +26,10 @@ impl PriceStorage {
     }
 
     pub fn get(&self, code: &str) -> PriceData {
-        self.price_map.get(code).copied().unwrap_or_else(Default::default)
+        self.price_map
+            .get(code)
+            .copied()
+            .unwrap_or_else(Default::default)
     }
 
     pub fn insert(&mut self, code: String, new_data: PriceData) {

@@ -1,4 +1,5 @@
 use unhtml::FromHtml;
+use unhtml_derive::FromHtml;
 
 use crate::price::PriceData;
 
@@ -49,7 +50,7 @@ impl Searcher {
             price: PriceData {
                 card_price,
                 cash_price,
-            }
+            },
         }
     }
 }
