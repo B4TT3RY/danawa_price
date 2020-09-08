@@ -11,22 +11,24 @@ impl Sender {
         }
     }
 
-    pub async fn send_message(&self, message: &str) {
+    pub async fn send_message(&self, message: &str) -> reqwest::Result<()> {
         let url = format!(
             "{}sendMessage?chat_id={}&text={}&parse_mode=MarkdownV2&disable_web_page_preview=true",
             self.api_link, self.chat_id, message
         );
-        let res = reqwest::get(&url).await.unwrap();
+        let res = reqwest::get(&url).await?;
         println!("sendMessage: {}", res.status());
+        Ok(())
     }
 
-    pub async fn set_chat_description(&self, description: &str) {
+    pub async fn set_chat_description(&self, description: &str) -> reqwest::Result<()> {
         let url = format!(
             "{}setChatDescription?chat_id={}&description={}",
             self.api_link, self.chat_id, description
         );
-        let res = reqwest::get(&url).await.unwrap();
+        let res = reqwest::get(&url).await?;
         println!("setChatDescription: {}", res.status());
+        Ok(())
     }
 }
 

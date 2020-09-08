@@ -14,15 +14,19 @@ use telegram::escape;
 async fn main() {
     let local: DateTime<Local> = Local::now();
 
-    let settings = Settings::new().unwrap();
+    let settings = Settings::new().expect("Error reading settings");
 
-    let mut price_map = price::PriceStorage::load("Data.toml").unwrap_or_else(Default::default);
+    let mut price_map =
+        price::PriceStorage::load("Data.toml").unwrap_or_else(|_| Default::default());
     let tg_client = telegram::Sender::new(&settings.telegram.bot_token, &settings.telegram.chat_id);
     let searcher = danawa::Searcher::new(&settings.danawa.url);
 
     let mut message = String::new();
     for product_code in settings.danawa.product_list {
-        let res = searcher.get_product_info(&product_code).await;
+        let res = searcher
+            .get_product_info(&product_code)
+            .await
+            .expect("Error getting product info");
         let PriceData {
             card_price,
             cash_price,
@@ -66,10 +70,15 @@ async fn main() {
     }
 
     if !message.is_empty() {
-        tg_client.send_message(&message).await;
+        tg_client
+            .send_message(&message)
+            .await
+            .expect("Error sending message");
     }
 
-    price_map.save("Data.toml");
+    price_map
+        .save("Data.toml")
+        .expect("Error saving price data");
 
     if settings.telegram.update_chat_description {
         tg_client
@@ -77,7 +86,8 @@ async fn main() {
                 "마지막 확인: {}",
                 local.format("%Y년 %m월 %d일 %H시 %M분")
             ))
-            .await;
+            .await
+            .expect("Error setting chat description");
     }
 }
 
