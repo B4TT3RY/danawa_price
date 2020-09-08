@@ -9,27 +9,14 @@ extern crate toml;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
-use unhtml::FromHtml;
 use num_format::{Locale, ToFormattedString};
 use chrono::prelude::*;
 
 mod settings;
 mod telegram;
+mod danawa;
 use settings::Settings;
 use telegram::syntax;
-
-#[derive(FromHtml, Debug)]
-#[html(selector = "#danawa_container")]
-struct DanawaData {
-    #[html(selector = ".prod_tit", attr = "inner")]
-    product_name: String,
-
-    #[html(selector = ".lowest_price .prc_c", attr = "inner", default = "정보없음")]
-    card_price: String,
-
-    #[html(selector = "#lowPriceCash .prc_c", attr = "inner", default = "정보없음")]
-    cash_price: String,
-}
 
 #[tokio::main]
 async fn main() {
@@ -46,23 +33,46 @@ async fn main() {
 
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
-    let mut prev_price_map: HashMap<String, String> = toml::from_str::<HashMap<String, String>>(&contents).unwrap();
+    let mut prev_price_map = toml::from_str::<HashMap<String, i32>>(&contents).unwrap();
     let mut message = String::new();
     let tg_client = telegram::Sender::new(&settings.telegram.bot_token, &settings.telegram.chat_id);
+    let searcher = danawa::Searcher::new(&settings.danawa.url);
 
     for product_code in settings.danawa.product_list.iter() {
-        let res = danawa(&settings, &product_code).await;
-        let prev_card_price = prev_price_map.get(&format!("card_{}", product_code)).cloned().unwrap_or_else(|| String::from("정보없음"));
-        let prev_cash_price = prev_price_map.get(&format!("cash_{}", product_code)).cloned().unwrap_or_else(|| String::from("정보없음"));
+        let res = searcher.get_product_info(&product_code).await;
+
+        let prev_card_price = prev_price_map.get(&format!("card_{}", product_code)).copied();
+        let prev_cash_price = prev_price_map.get(&format!("cash_{}", product_code)).copied();
 
         if prev_card_price != res.card_price || prev_cash_price != res.cash_price {
-            message.push_str(&format!("[{}]({})%0D%0A", syntax(&res.product_name), format!("{}{}", settings.danawa.url, product_code)));
-            message.push_str(&format!("`\\- 카드가: {}원 ({})`%0D%0A", syntax(&res.card_price), price_distance(&prev_card_price, &res.card_price)));
-            message.push_str(&format!("`\\- 현금가: {}원 ({})`%0D%0A", syntax(&res.cash_price), price_distance(&prev_cash_price, &res.cash_price)));
+            let card_diff = price_difference(prev_card_price, res.card_price);
+            let cash_diff = price_difference(prev_cash_price, res.cash_price);
+
+            let card_price = res.card_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
+            let cash_price = res.cash_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
+
+            let new_content = format!(
+                "[{product_name}]({product_url})%0D%0A\
+                `\\- 카드가: {card_price}원 ({card_diff})`%0D%0A\
+                `\\- 현금가: {cash_price}원 ({cash_diff})`%0D%0A",
+                product_name = syntax(&res.product_name),
+                product_url = res.url,
+                card_price = card_price,
+                card_diff = card_diff,
+                cash_price = cash_price,
+                cash_diff = cash_diff,
+            );
+            message.push_str(&new_content);
         }
-        prev_price_map.insert(format!("card_{}", product_code), res.card_price);
-        prev_price_map.insert(format!("cash_{}", product_code), res.cash_price);
+
+        if let Some(card_price) = res.card_price {
+            prev_price_map.insert(format!("card_{}", product_code), card_price);
+        }
+        if let Some(cash_price) = res.cash_price {
+            prev_price_map.insert(format!("cash_{}", product_code), cash_price);
+        }
     }
+
     if !message.is_empty() {
         tg_client.send_message(&message).await;
     }
@@ -80,33 +90,37 @@ async fn main() {
     }
 }
 
-async fn danawa(settings: &Settings, product_code: &str) -> DanawaData {
-    let url = format!("{}{}", settings.danawa.url, product_code);
-    let res = reqwest::get(&url).await.unwrap();
-    assert!(res.status().is_success());
-
-    let body = res.text().await.unwrap();
-    DanawaData::from_html(&body).unwrap()
+enum Difference {
+    Error,
+    Up(i32),
+    Stay,
+    Down(i32),
 }
 
-fn price_distance(prev: &str, now: &str) -> String {
-    if now == "정보없음" {
-        return String::from("-");
+impl std::fmt::Display for Difference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Difference::Error => f.write_str("정보없음"),
+            Difference::Stay => f.write_str("-"),
+            Difference::Up(up) => write!(f, "▲{}원", up.to_formatted_string(&Locale::ko)),
+            Difference::Down(down) => write!(f, "▼{}원", down.to_formatted_string(&Locale::ko)),
+        }
     }
+}
 
-    let prev = if prev == "정보없음" {
-        0
-    } else {
-        prev.replace(",", "").parse::<i32>().unwrap()
-    };
-    let now = now.replace(",", "").parse::<i32>().unwrap();
-
-    let distance = now - prev;
-    if distance > 0 {
-        format!("▲{}원", distance.to_formatted_string(&Locale::ko))
-    } else if distance < 0 {
-        format!("▼{}원", distance.abs().to_formatted_string(&Locale::ko))
-    } else {
-        String::from("-")
+fn price_difference(prev: Option<i32>, now: Option<i32>) -> Difference {
+    match (prev, now) {
+        (_, None) => Difference::Stay,
+        (None, _) => Difference::Error,
+        (Some(prev), Some(now)) => {
+            let diff = now - prev;
+            if diff > 0 {
+                Difference::Up(diff)
+            } else if diff < 0 {
+                Difference::Down(-diff)
+            } else {
+                Difference::Stay
+            }
+        }
     }
 }
