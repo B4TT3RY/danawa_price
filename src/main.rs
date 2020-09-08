@@ -11,6 +11,7 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use unhtml::FromHtml;
 use num_format::{Locale, ToFormattedString};
+use chrono::prelude::*;
 
 mod settings;
 mod telegram;
@@ -32,6 +33,8 @@ struct DanawaData {
 
 #[tokio::main]
 async fn main() {
+    let local: DateTime<Local> = Local::now();
+
     let settings = Settings::new().unwrap();
     
     let mut file = OpenOptions::new()
@@ -70,6 +73,10 @@ async fn main() {
                 .unwrap();
     file.write_all(toml::to_string(&prev_price_map).unwrap().as_bytes()).unwrap();
     file.flush().unwrap();
+
+    if settings.telegram.update_chat_description {
+        telegram::set_chat_description(&settings.telegram.bot_token, &settings.telegram.chat_id, &format!("마지막 확인: {}", local.format("%Y-%m-%d %H:%M:%S"))).await;
+    }
 }
 
 async fn danawa(settings: &Settings, product_code: &str) -> DanawaData {
