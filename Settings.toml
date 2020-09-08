@@ -1,0 +1,6 @@
+[telegram]
+bot_token = ""
+
+[danawa]
+url = "http://prod.danawa.com/info/?pcode="
+product_list = ["11405586", "11397129", "11224182"]
