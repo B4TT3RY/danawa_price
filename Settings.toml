@@ -1,7 +1,8 @@
 [telegram]
 bot_token = ""
 chat_id = ""
+update_chat_description = true
 
 [danawa]
 url = "http://prod.danawa.com/info/?pcode="
-product_list = ["11405586", "11397129", "11224182"]
+product_list = [""]
