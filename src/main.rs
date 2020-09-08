@@ -36,7 +36,7 @@ async fn main() {
     let local: DateTime<Local> = Local::now();
 
     let settings = Settings::new().unwrap();
-    
+
     let mut file = OpenOptions::new()
                             .create(true)
                             .read(true)
@@ -48,6 +48,7 @@ async fn main() {
     file.read_to_string(&mut contents).unwrap();
     let mut prev_price_map: HashMap<String, String> = toml::from_str::<HashMap<String, String>>(&contents).unwrap();
     let mut message = String::new();
+    let tg_client = telegram::Sender::new(&settings.telegram.bot_token, &settings.telegram.chat_id);
 
     for product_code in settings.danawa.product_list.iter() {
         let res = danawa(&settings, &product_code).await;
@@ -63,7 +64,7 @@ async fn main() {
         prev_price_map.insert(format!("cash_{}", product_code), res.cash_price);
     }
     if !message.is_empty() {
-        telegram::send_message(&settings.telegram.bot_token, &settings.telegram.chat_id, &message).await;
+        tg_client.send_message(&message).await;
     }
 
     file = OpenOptions::new()
@@ -75,7 +76,7 @@ async fn main() {
     file.flush().unwrap();
 
     if settings.telegram.update_chat_description {
-        telegram::set_chat_description(&settings.telegram.bot_token, &settings.telegram.chat_id, &format!("마지막 확인: {}", local.format("%Y년 %m월 %d일 %H시 %M분"))).await;
+        tg_client.send_message(&format!("마지막 확인: {}", local.format("%Y년 %m월 %d일 %H시 %M분"))).await;
     }
 }
 
