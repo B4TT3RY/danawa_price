@@ -28,12 +28,7 @@ struct DanawaData {
 
 #[tokio::main]
 async fn main() {
-    let settings = match Settings::new() {
-        Ok(settings) => settings,
-        Err(error) => {
-            panic!("Settings Error: {}", error);
-        },
-    };
+    let settings = Settings::new().unwrap();
     
     let mut file = OpenOptions::new()
                             .create(true)
@@ -48,12 +43,11 @@ async fn main() {
 
     for product_code in settings.danawa.product_list.iter() {
         let res = danawa(&settings, &product_code).await;
-        let default = &String::from("정보없음");
-        let prev_card_price = prev_price_map.get(&format!("card_{}", product_code)).unwrap_or(default);
-        let prev_cash_price = prev_price_map.get(&format!("cash_{}", product_code)).unwrap_or(default);
+        let prev_card_price = prev_price_map.get(&format!("card_{}", product_code)).cloned().unwrap_or_else(|| String::from("정보없음"));
+        let prev_cash_price = prev_price_map.get(&format!("cash_{}", product_code)).cloned().unwrap_or_else(|| String::from("정보없음"));
         println!("{} ({})", res.product_name, format!("{}{}", settings.danawa.url, product_code));
-        println!(" - 카드가: {}원 ({})", res.card_price, price_distance(prev_card_price, &res.card_price));
-        println!(" - 현금가: {}원 ({})", res.cash_price, price_distance(prev_cash_price, &res.cash_price));
+        println!(" - 카드가: {}원 ({})", res.card_price, price_distance(&prev_card_price, &res.card_price));
+        println!(" - 현금가: {}원 ({})", res.cash_price, price_distance(&prev_cash_price, &res.cash_price));
 
         prev_price_map.insert(format!("card_{}", product_code), res.card_price);
         prev_price_map.insert(format!("cash_{}", product_code), res.cash_price);
