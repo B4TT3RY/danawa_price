@@ -1,5 +1,7 @@
 use unhtml::FromHtml;
 
+use crate::price::PriceData;
+
 #[derive(FromHtml, Debug)]
 #[html(selector = "#danawa_container")]
 struct DanawaData {
@@ -16,8 +18,7 @@ struct DanawaData {
 pub struct ProductInfo {
     pub product_name: String,
     pub url: String,
-    pub card_price: Option<i32>,
-    pub cash_price: Option<i32>,
+    pub price: PriceData,
 }
 
 pub struct Searcher {
@@ -45,8 +46,10 @@ impl Searcher {
         ProductInfo {
             product_name: data.product_name,
             url,
-            card_price,
-            cash_price,
+            price: PriceData {
+                card_price,
+                cash_price,
+            }
         }
     }
 }

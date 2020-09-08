@@ -6,15 +6,14 @@ extern crate reqwest;
 extern crate config;
 extern crate toml;
 
-use std::collections::HashMap;
-use std::fs::OpenOptions;
-use std::io::prelude::*;
+use price::PriceData;
 use num_format::{Locale, ToFormattedString};
 use chrono::prelude::*;
 
 mod settings;
 mod telegram;
 mod danawa;
+mod price;
 use settings::Settings;
 use telegram::syntax;
 
@@ -24,32 +23,29 @@ async fn main() {
 
     let settings = Settings::new().unwrap();
 
-    let mut file = OpenOptions::new()
-                            .create(true)
-                            .read(true)
-                            .write(true)
-                            .open("Data.toml")
-                            .unwrap();
-
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let mut prev_price_map = toml::from_str::<HashMap<String, i32>>(&contents).unwrap();
-    let mut message = String::new();
+    let mut price_map = price::PriceStorage::load("Data.toml").unwrap_or_else(Default::default);
     let tg_client = telegram::Sender::new(&settings.telegram.bot_token, &settings.telegram.chat_id);
     let searcher = danawa::Searcher::new(&settings.danawa.url);
 
-    for product_code in settings.danawa.product_list.iter() {
+    let mut message = String::new();
+    for product_code in settings.danawa.product_list {
         let res = searcher.get_product_info(&product_code).await;
+        let PriceData {
+            card_price,
+            cash_price,
+        } = res.price;
 
-        let prev_card_price = prev_price_map.get(&format!("card_{}", product_code)).copied();
-        let prev_cash_price = prev_price_map.get(&format!("cash_{}", product_code)).copied();
+        let PriceData {
+            card_price: prev_card_price,
+            cash_price: prev_cash_price,
+         } = price_map.get(&product_code);
 
-        if prev_card_price != res.card_price || prev_cash_price != res.cash_price {
-            let card_diff = price_difference(prev_card_price, res.card_price);
-            let cash_diff = price_difference(prev_cash_price, res.cash_price);
+        if prev_card_price != card_price || prev_cash_price != cash_price {
+            let card_diff = price_difference(prev_card_price, card_price);
+            let cash_diff = price_difference(prev_cash_price, cash_price);
 
-            let card_price = res.card_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
-            let cash_price = res.cash_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
+            let card_price = card_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
+            let cash_price = cash_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
 
             let new_content = format!(
                 "[{product_name}]({product_url})%0D%0A\
@@ -65,28 +61,20 @@ async fn main() {
             message.push_str(&new_content);
         }
 
-        if let Some(card_price) = res.card_price {
-            prev_price_map.insert(format!("card_{}", product_code), card_price);
-        }
-        if let Some(cash_price) = res.cash_price {
-            prev_price_map.insert(format!("cash_{}", product_code), cash_price);
-        }
+        price_map.insert(product_code, PriceData {
+            card_price,
+            cash_price
+        });
     }
 
     if !message.is_empty() {
         tg_client.send_message(&message).await;
     }
 
-    file = OpenOptions::new()
-                .write(true)
-                .append(false)
-                .open("Data.toml")
-                .unwrap();
-    file.write_all(toml::to_string(&prev_price_map).unwrap().as_bytes()).unwrap();
-    file.flush().unwrap();
+    price_map.save("Data.toml");
 
     if settings.telegram.update_chat_description {
-        tg_client.send_message(&format!("마지막 확인: {}", local.format("%Y년 %m월 %d일 %H시 %M분"))).await;
+        tg_client.set_chat_description(&format!("마지막 확인: {}", local.format("%Y년 %m월 %d일 %H시 %M분"))).await;
     }
 }
 
