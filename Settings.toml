@@ -1,5 +1,6 @@
 [telegram]
 bot_token = ""
+chat_id = ""
 
 [danawa]
 url = "http://prod.danawa.com/info/?pcode="

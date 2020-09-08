@@ -4,6 +4,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct Telegram {
     pub bot_token: String,
+    pub chat_id: String,
 }
 
 #[derive(Debug, Deserialize)]
