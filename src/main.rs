@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate unhtml_derive;
 extern crate unhtml;
 extern crate serde;
 extern crate reqwest;

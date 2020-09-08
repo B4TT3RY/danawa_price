@@ -9,8 +9,9 @@ edition = "2018"
 [dependencies]
 reqwest = { version = "0.10", features = ["json"] }
 tokio = { version = "0.2", features = ["full"] }
-unhtml = { version = "0.7.5", features = ["derive"] }
 serde = { version = "1.0.115", features = ["derive"] }
+unhtml = "0.7.5"
+unhtml_derive = "0.7.5"
 num-format = "0.4.0"
 config = "0.9"
 toml = "0.5.6"
