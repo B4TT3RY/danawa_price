@@ -75,7 +75,7 @@ async fn main() {
     file.flush().unwrap();
 
     if settings.telegram.update_chat_description {
-        telegram::set_chat_description(&settings.telegram.bot_token, &settings.telegram.chat_id, &format!("마지막 확인: {}", local.format("%Y-%m-%d %H:%M:%S"))).await;
+        telegram::set_chat_description(&settings.telegram.bot_token, &settings.telegram.chat_id, &format!("마지막 확인: {}", local.format("%Y년 %m월 %d일 %H시 %M분"))).await;
     }
 }
 
