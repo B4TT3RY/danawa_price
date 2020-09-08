@@ -11,7 +11,9 @@ use unhtml::FromHtml;
 use num_format::{Locale, ToFormattedString};
 
 mod settings;
+mod telegram;
 use settings::Settings;
+use telegram::syntax;
 
 #[derive(FromHtml, Debug)]
 #[html(selector = "#danawa_container")]
@@ -40,17 +42,23 @@ async fn main() {
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
     let mut prev_price_map: HashMap<String, String> = toml::from_str::<HashMap<String, String>>(&contents).unwrap();
+    let mut message = String::new();
 
     for product_code in settings.danawa.product_list.iter() {
         let res = danawa(&settings, &product_code).await;
         let prev_card_price = prev_price_map.get(&format!("card_{}", product_code)).cloned().unwrap_or_else(|| String::from("정보없음"));
         let prev_cash_price = prev_price_map.get(&format!("cash_{}", product_code)).cloned().unwrap_or_else(|| String::from("정보없음"));
-        println!("{} ({})", res.product_name, format!("{}{}", settings.danawa.url, product_code));
-        println!(" - 카드가: {}원 ({})", res.card_price, price_distance(&prev_card_price, &res.card_price));
-        println!(" - 현금가: {}원 ({})", res.cash_price, price_distance(&prev_cash_price, &res.cash_price));
 
+        if prev_card_price != res.card_price || prev_cash_price != res.cash_price {
+            message.push_str(&format!("[{}]({})%0D%0A", syntax(&res.product_name), format!("{}{}", settings.danawa.url, product_code)));
+            message.push_str(&format!("`\\- 카드가: {}원 ({})`%0D%0A", syntax(&res.card_price), price_distance(&prev_card_price, &res.card_price)));
+            message.push_str(&format!("`\\- 현금가: {}원 ({})`%0D%0A", syntax(&res.cash_price), price_distance(&prev_cash_price, &res.cash_price)));
+        }
         prev_price_map.insert(format!("card_{}", product_code), res.card_price);
         prev_price_map.insert(format!("cash_{}", product_code), res.cash_price);
+    }
+    if !message.is_empty() {
+        telegram::send_message(&settings.telegram.bot_token, &settings.telegram.chat_id, &message).await;
     }
 
     file = OpenOptions::new()
