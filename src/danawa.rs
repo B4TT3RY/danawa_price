@@ -51,8 +51,8 @@ impl Searcher {
         let body = res.text().await?;
         let data = DanawaData::from_html(&body)?;
 
-        let card_price = data.card_price.and_then(|price| price.parse().ok());
-        let cash_price = data.cash_price.and_then(|price| price.parse().ok());
+        let card_price = data.card_price.and_then(|price| price.replace(",", "").parse().ok());
+        let cash_price = data.cash_price.and_then(|price| price.replace(",", "").parse().ok());
 
         Ok(ProductInfo {
             product_name: data.product_name,
