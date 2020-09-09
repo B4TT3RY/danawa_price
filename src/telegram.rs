@@ -39,8 +39,9 @@ pub fn escape(message: &str) -> String {
     let mut output = String::new();
     for c in message.chars() {
         if ESCAPE.contains(&c) {
-            output.push(c);
+            output.push('\'');
         }
+        output.push(c);
     }
     output
 }
