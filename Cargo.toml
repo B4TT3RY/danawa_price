@@ -1,18 +1,18 @@
 [package]
 name = "danawa_price"
-version = "0.1.0"
-authors = ["B4TT3RY <gb4tt3ry@gmail.com>"]
+version = "0.2.0"
+authors = ["B4TT3RY <gb4tt3ry@gmail.com>", "kiwiyou <kiwiyou@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+chrono = "0.4"
+config = "0.10.1"
+num-format = "0.4.0"
 reqwest = { version = "0.10", features = ["json"] }
-tokio = { version = "0.2", features = ["full"] }
 serde = { version = "1.0.115", features = ["derive"] }
+tokio = { version = "0.2", features = ["full"] }
+toml = "0.5.6"
 unhtml = "0.7.5"
 unhtml_derive = "0.7.5"
-num-format = "0.4.0"
-config = "0.9"
-toml = "0.5.6"
-chrono = "0.4"
