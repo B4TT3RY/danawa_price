@@ -18,6 +18,7 @@ impl Sender {
         );
         let res = reqwest::get(&url).await?;
         println!("sendMessage: {}", res.status());
+        dbg!(res.text().await.unwrap());
         Ok(())
     }
 
@@ -39,7 +40,7 @@ pub fn escape(message: &str) -> String {
     let mut output = String::new();
     for c in message.chars() {
         if ESCAPE.contains(&c) {
-            output.push('\'');
+            output.push('\\');
         }
         output.push(c);
     }
