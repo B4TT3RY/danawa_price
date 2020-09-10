@@ -42,14 +42,14 @@ async fn main() {
             let cash_diff = price_difference(prev_cash_price, cash_price);
 
             let card_price =
-                card_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
+                card_price.map_or("정보없음".to_string(), |price| format!("{}원", price.to_formatted_string(&Locale::ko)));
             let cash_price =
-                cash_price.map_or("정보없음".to_string(), |price| format!("{}원", price));
+                cash_price.map_or("정보없음".to_string(), |price| format!("{}원", price.to_formatted_string(&Locale::ko)));
 
             let new_content = format!(
                 "[{product_name}]({product_url})%0D%0A\
-                `\\- 카드가: {card_price}원 ({card_diff})`%0D%0A\
-                `\\- 현금가: {cash_price}원 ({cash_diff})`%0D%0A",
+                `\\- 카드가: {card_price} ({card_diff})`%0D%0A\
+                `\\- 현금가: {cash_price} ({cash_diff})`%0D%0A",
                 product_name = escape(&res.product_name),
                 product_url = res.url,
                 card_price = card_price,
