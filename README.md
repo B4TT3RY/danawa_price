@@ -5,4 +5,4 @@ Thanks to [kiwiyou](https://github.com/kiwiyou), [RanolP](https://github.com/Ran
 
 # To-Do
 
-- [ ] 변동가 1,000원 미만 알람 끄기
+- [x] 변동가 1,000원 미만 알람 끄기
