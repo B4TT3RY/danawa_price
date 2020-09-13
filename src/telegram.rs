@@ -11,10 +11,10 @@ impl Sender {
         }
     }
 
-    pub async fn send_message(&self, message: &str) -> reqwest::Result<()> {
+    pub async fn send_message(&self, message: &str, disable_notification: bool) -> reqwest::Result<()> {
         let url = format!(
-            "{}sendMessage?chat_id={}&text={}&parse_mode=MarkdownV2&disable_web_page_preview=true",
-            self.api_link, self.chat_id, message
+            "{}sendMessage?chat_id={}&text={}&parse_mode=MarkdownV2&disable_web_page_preview=true&disable_notification={}",
+            self.api_link, self.chat_id, message, disable_notification
         );
         let res = reqwest::get(&url).await?;
         println!("sendMessage: {}", res.status());

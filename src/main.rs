@@ -22,6 +22,7 @@ async fn main() {
     let searcher = danawa::Searcher::new(&settings.danawa.url);
 
     let mut message = String::new();
+    let mut max_difference: Vec<i32> = Vec::new();
     for product_code in settings.danawa.product_list {
         let res = searcher
             .get_product_info(&product_code)
@@ -58,6 +59,18 @@ async fn main() {
                 cash_diff = cash_diff,
             );
             message.push_str(&new_content);
+
+            max_difference.push(match card_diff {
+                Difference::Up(up) => up,
+                Difference::Down(down) => down,
+                _ => 0,
+            });
+
+            max_difference.push(match cash_diff {
+                Difference::Up(up) => up,
+                Difference::Down(down) => down,
+                _ => 0,
+            });
         }
 
         price_map.insert(
@@ -70,8 +83,9 @@ async fn main() {
     }
 
     if !message.is_empty() {
+        let disable_notification = max_difference.iter().max().unwrap_or(&0) < &1000;
         tg_client
-            .send_message(&message)
+            .send_message(&message, disable_notification)
             .await
             .expect("Error sending message");
     }
