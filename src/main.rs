@@ -81,9 +81,9 @@ async fn main() {
             },
         );
     }
-
-    if !message.is_empty() {
-        let disable_notification = max_difference.iter().max().unwrap_or(&0) < &1000;
+    let max_difference = max_difference.iter().max().unwrap_or(&0).to_owned();
+    if !message.is_empty() && max_difference >= 100 {
+        let disable_notification = max_difference < 1000;
         tg_client
             .send_message(&message, disable_notification)
             .await
